@@ -1,45 +1,62 @@
+from selenium import webdriver
 import sys
 import os
 import subprocess
 import shutil
-import webbrowser
-import mss
+import time
+from config import config
+
+filename = f"cgra-t{config['turma']}g{config['grupo']}-"
+shouldZip = config['zip']
+shouldScreenshot = config['screenshot']
+
 
 def printUsage():
-    print("Usage:")
+    print("Usage:\npython3 main.py directory tpN\n")
 
 def zipCWD(tag, outDirectory):
-    print("Zipping")
-    curDir = os.getcwd()
-    os.chdir(outDirectory)
-    shutil.make_archive(tag, 'zip', os.getcwd())
-    os.chdir(curDir)
+    shutil.make_archive(outDirectory + "/" + filename + tag, 'zip', os.getcwd())
 
-def processTag(tag, outDirectory):
-    print(tag)
-    subprocess.run(["git", "checkout", tag])
-    zipCWD(tag, outDirectory)
+def takeScreenshot(tag, outDirectory, driver):
+    if(driver):
+        driver.get("http://127.0.0.1:8080/" + tag.split('-')[0] + "/")
+        time.sleep(1)
+        wd = os.getcwd()
+        os.chdir(outDirectory)
+        driver.get_screenshot_as_file(filename + tag + ".png")
+        os.chdir(wd)
 
+def processTag(tag, outDirectory, driver=None):
+    subprocess.run(["git", "checkout", tag], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if(shouldZip):
+        zipCWD(tag, outDirectory)
+    if(shouldScreenshot):
+        takeScreenshot(tag, outDirectory, driver)
 
 def main():
     if(len(sys.argv) != 3):
         print("Invalid number of arguments")
         printUsage()
+        return 1
 
     directory = sys.argv[1]
-    tag_template = sys.argv[2]
+    tp = sys.argv[2]
 
     wd = os.getcwd()
-
     os.chdir(directory)
     tags = subprocess.check_output(["git", "tag", "-l"]).decode("utf-8").split('\n')
-    tags = [i for i in tags if i.startswith(tag_template)]
+    tags = [i for i in tags if i.startswith(tp)]
 
-    #subprocess.run(["python3", "-m", "http.server", "8080"])
+    driver = None
+    if(shouldScreenshot):
+        driver = webdriver.Firefox()
+        subprocess.Popen(["python3", "-m", "http.server", "8080"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
     for tag in tags:
-        processTag(tag, wd)
+        processTag(tag, wd, driver)
 
-
+    if(driver):
+        driver.close()
 
 if __name__ == "__main__":
     main()
