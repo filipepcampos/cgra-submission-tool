@@ -26,8 +26,11 @@ def takeScreenshot(tag, outDirectory, driver):
         driver.get_screenshot_as_file(filename + tag + ".png")
         os.chdir(wd)
 
-def processTag(tag, outDirectory, driver=None):
+def gitCheckout(tag):
     subprocess.run(["git", "checkout", tag], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+def processTag(tag, outDirectory, driver=None):
+    gitCheckout(tag)
     if(shouldZip):
         zipCWD(tag, outDirectory)
     if(shouldScreenshot):
@@ -54,6 +57,7 @@ def main():
 
     for tag in tags:
         processTag(tag, wd, driver)
+    gitCheckout('master')
 
     if(driver):
         driver.close()
